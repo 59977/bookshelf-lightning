@@ -56,6 +56,7 @@
 .buttons-wrap {
     display: flex;
     flex-direction: row;
+    width: 1080px;
 }
 
 .shelf {
@@ -69,11 +70,20 @@
     font-size: xx-large;
 }
 
+.status-indicator {
+    padding: 10px;    
+    margin: 50px;
+    width: 10px;
+    height: 10px;
+    margin-left: auto;
+    border-radius: 50%;
+}
+
 .button {
     background-color: #ddf;
     padding: 30px;    
     margin: 10px;
-    font-size: xx-large;
+    font-size: xx-large;    
 }
 
 .button-light {

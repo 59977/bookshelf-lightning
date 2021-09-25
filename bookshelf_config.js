@@ -110,7 +110,18 @@ function LedStripArray({ strips }) {
       save();
       console.log("save");
     }
-  });    
+  });   
+  
+  const [deviceStatus, setDeviceStatus] = React.useState("#ffff00");
+  React.useEffect(()=>{
+      getLedState(0)
+      .then(data => {
+        setDeviceStatus("#00ff00");
+      })
+      .catch(err => {
+        setDeviceStatus("#ff0000");        
+      });
+  }, []);
 
   let patches = [];
   for (let i = 0; i < strips.length; i++) {
@@ -187,12 +198,12 @@ function LedStripArray({ strips }) {
     setDimLevel(newDimLevel);    
   }
 
-  async function save() {
+  function save() {
     localStorage.setItem("strips.state", JSON.stringify(stripState));
     console.log("Save");
   }
 
-  async function load() {
+  function load() {
     const newStripState = JSON.parse(localStorage.getItem("strips.state"));
     for (var i = 0; i < stripState.length; i++) {
       var strip = stripState[i];
@@ -202,6 +213,28 @@ function LedStripArray({ strips }) {
         led.selectedState[1](newStripState[i][j].selectedState[0]);
       }
     }
+  }
+
+  async function checkConnection() {
+  }
+  
+  async function loadAllLedStripStates() {
+    for (let i = 0; i < strips.length; i++) {
+      const response = await getLedState(i).catch(r => console.log(r));
+      strips[i].colors = (await response.text()).split('\r\n').filter(s => s.length >= 8).map(s => ({
+        r: parseInt(s.slice(2, 4), 16), 
+        g: parseInt(s.slice(4, 6), 16), 
+        b: parseInt(s.slice(6, 8), 16) }));
+    }
+  }
+
+  async function getLedState(index) {
+    const response = await fetch('http://192.168.1.139/api/neopixels/' + index, {
+      method: 'GET', // *GET, POST, PUT, DELETE, etc.
+      mode: 'cors', // no-cors, *cors, same-origin      
+      redirect: 'error', // manual, *follow, error     
+    });
+    return response;
   }
 
   async function putLedState(index, body) {
@@ -241,7 +274,8 @@ function LedStripArray({ strips }) {
       e('button', { onClick: off, className: "button button-off" }, "Off"),
       e('button', { onClick: () => dim(-0.1), className: "button button-dimmer" }, "-"),
       e('div', { className: 'dim-level' }, (parseFloat(dimLevel) * 100).toFixed(0)+"%"),      
-      e('button', { onClick: () => dim(0.1), className: "button button-brighter" }, "+")),
+      e('button', { onClick: () => dim(0.1), className: "button button-brighter" }, "+"),
+      e('div', { className: 'status-indicator', style: { backgroundColor: deviceStatus } }, "")),
     e('div', { className: 'shelf' }, patches)
   );
 }
