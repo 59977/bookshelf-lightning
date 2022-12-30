@@ -205,12 +205,16 @@ function LedStripArray({ strips }) {
 
   function load() {
     const newStripState = JSON.parse(localStorage.getItem("strips.state"));
-    for (var i = 0; i < stripState.length; i++) {
+    if (!newStripState) return;
+    
+    for (var i = 0; i < stripState.length && i < newStripState.length; i++) {
       var strip = stripState[i];
-      for (var j = 0; j < strip.length; j++) {
+      for (var j = 0; j < strip.length && j < newStripState[i].length; j++) {
         var led = strip[j];
-        led.colorState[1](newStripState[i][j].colorState[0]);
-        led.selectedState[1](newStripState[i][j].selectedState[0]);
+        if (newStripState[i][j].colorState && newStripState[i][j].selectedState) {
+          led.colorState[1](newStripState[i][j].colorState[0]);
+          led.selectedState[1](newStripState[i][j].selectedState[0]);
+        }
       }
     }
   }
