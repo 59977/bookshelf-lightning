@@ -33,7 +33,7 @@ function LedEditor({ color, selected, setSelected }) {
   );  
 }
 
-function LedStripEditor({ leds, pasteAll }) {
+function LedStripEditor({ leds, pasteAll, applyFunc }) {
   var ledElements = leds.map((l, i) => e(LedEditor, { key: i, color: l.colorState[0], selected: l.selectedState[0], setSelected: l.selectedState[1] }));
   const [pickerColor, setPickerColor] = React.useState("#ffc040");
   
@@ -64,6 +64,12 @@ function LedStripEditor({ leds, pasteAll }) {
   function pasteToAll() {
     pasteAll();
   }
+
+  function applyToDevice() {   
+    if (applyFunc) {
+      applyFunc(); 
+    }
+  }
   
   return e(
     'div', {
@@ -76,7 +82,8 @@ function LedStripEditor({ leds, pasteAll }) {
         e('button', { onClick: turnOff, className: "button button-editor button-turn-off" }, "Turn off"),  
         e('button', { onClick: selectAll, className: "button button-editor button-select-all" }, "Select"),
         e('button', { onClick: clearSelection, className: "button button-editor button-select-clear" }, "Deselect"),
-        e('button', { onClick: pasteToAll, className: "button button-editor button-select-clear" }, "Paste to all"))), 
+        e('button', { onClick: pasteToAll, className: "button button-editor button-select-clear" }, "Paste to all"), 
+        e('button', { onClick: applyToDevice, className: "button button-editor button-select-clear" }, "Apply"))), 
     e('div', { className: 'ledstrip-editor-leds-wrapper' },  
       ledElements)     
   );    
@@ -113,7 +120,7 @@ function LedStripArray({ strips }) {
   });   
   
   const [deviceStatus, setDeviceStatus] = React.useState("#ffff00");
-  const [broker, setBroker] = React.useState(mqtt.connect("ws://openhabian"));
+  const [broker, setBroker] = React.useState(mqtt.connect("ws://openhabian:9008"));
   // React.useEffect(()=>{
 
   //     getLedState(0)
@@ -142,9 +149,9 @@ function LedStripArray({ strips }) {
     let i = selectedPatch[0];
     if (selectedPatch[1]) {
       let patch = selectedPatch[1];
-      editor.push(e(LedStripEditor, { key: patches.length, leds: stripState[i].slice(patch.start, patch.start + patch.size), pasteAll: pasteSelectedToAllPatches }))
+      editor.push(e(LedStripEditor, { key: patches.length, leds: stripState[i].slice(patch.start, patch.start + patch.size), pasteAll: pasteSelectedToAllPatches, applyFunc: storeAllStrips }))
     } else {
-      editor.push(e(LedStripEditor, { key: patches.length, leds: stripState[i], pasteAll: pasteSelectedToAllPatches }));
+      editor.push(e(LedStripEditor, { key: patches.length, leds: stripState[i], pasteAll: pasteSelectedToAllPatches, applyFunc: storeAllStrips }));
     }
   }
 
@@ -173,7 +180,7 @@ function LedStripArray({ strips }) {
     }
   }
 
-  async function light() {
+  async function on() {
     if (broker) {
       broker.publish("allstrips/commands", "ON");
     }
@@ -185,7 +192,7 @@ function LedStripArray({ strips }) {
       const colors = strip.map(l => l.colorState[0].slice(1));  
       const newColors = colors.map(c => mapColor(c, dimLevel));
       const body = newColors.map(c => '00' + c).join('\r\n');  
-      await putLedState(i, body).then(r => console.log(r));      
+      putLedState(i, body);      
       i++;
     }
   }
@@ -197,10 +204,13 @@ function LedStripArray({ strips }) {
   }
 
   function dim(delta) {
-    var newDimLevel = dimLevel + delta;
-    newDimLevel = newDimLevel > 1 ? 1 : newDimLevel;
-    newDimLevel = newDimLevel < 0 ? 0 : newDimLevel;
-    setDimLevel(newDimLevel);    
+    if (broker) {
+      if (delta > 0) {
+        broker.publish("allstrips/commands", "INCREASE");
+      } else {        
+        broker.publish("allstrips/commands", "DECREASE");        
+      }
+    }
   }
 
   function save() {
@@ -246,18 +256,10 @@ function LedStripArray({ strips }) {
     return response;
   }
 
-  async function putLedState(index, body) {
-    console.log(body);
-    const response = await fetch('http://192.168.1.139/api/neopixels/' + index, {
-      method: 'PUT', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
-      headers: {
-        'Content-Type': 'text/plain'
-      },
-      redirect: 'error', // manual, *follow, error
-      body: body 
-    });
-    return response;
+  function putLedState(index, body) {    
+    let topic = "piece/" + index + "/colors";
+    console.log(topic + " <- " + body);
+    broker.publish(topic, body, { retain: true });
   }
 
   function mapColor(c, dimLevel) {
@@ -279,12 +281,12 @@ function LedStripArray({ strips }) {
     },
     e('div', { className: 'editor-wrap' }, editor),      
     e('div', { className: 'buttons-wrap' },      
-      e('button', { onClick: light, className: "button button-light" }, "Light"),
+      e('button', { onClick: on, className: "button button-light" }, "On"),
       e('button', { onClick: off, className: "button button-off" }, "Off"),
       e('button', { onClick: () => dim(-0.1), className: "button button-dimmer" }, "-"),
-      e('div', { className: 'dim-level' }, (parseFloat(dimLevel) * 100).toFixed(0)+"%"),      
-      e('button', { onClick: () => dim(0.1), className: "button button-brighter" }, "+"),
-      e('div', { className: 'status-indicator', style: { backgroundColor: deviceStatus } }, "")),
+      //e('div', { className: 'dim-level' }, (parseFloat(dimLevel) * 100).toFixed(0)+"%"),      
+      e('button', { onClick: () => dim(0.1), className: "button button-brighter" }, "+")),
+      //e('div', { className: 'status-indicator', style: { backgroundColor: deviceStatus } }, "")),
     e('div', { className: 'shelf' }, patches)
   );
 }
