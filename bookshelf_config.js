@@ -113,15 +113,17 @@ function LedStripArray({ strips }) {
   });   
   
   const [deviceStatus, setDeviceStatus] = React.useState("#ffff00");
-  React.useEffect(()=>{
-      getLedState(0)
-      .then(data => {
-        setDeviceStatus("#00ff00");
-      })
-      .catch(err => {
-        setDeviceStatus("#ff0000");        
-      });
-  }, []);
+  const [broker, setBroker] = React.useState(mqtt.connect("ws://openhabian"));
+  // React.useEffect(()=>{
+
+  //     getLedState(0)
+  //     .then(data => {
+  //       setDeviceStatus("#00ff00");
+  //     })
+  //     .catch(err => {
+  //       setDeviceStatus("#ff0000");        
+  //     });
+  // }, []);
 
   let patches = [];
   for (let i = 0; i < strips.length; i++) {
@@ -172,6 +174,12 @@ function LedStripArray({ strips }) {
   }
 
   async function light() {
+    if (broker) {
+      broker.publish("allstrips/commands", "ON");
+    }
+  }
+
+  async function storeAllStrips() {
     let i = 0;
     for (var strip of stripState) {
       const colors = strip.map(l => l.colorState[0].slice(1));  
@@ -183,11 +191,8 @@ function LedStripArray({ strips }) {
   }
 
   async function off() {
-    let i = 0;
-    for (var strip of stripState) {
-      const body = strip.map(l => '00000000').join('\r\n');  
-      await putLedState(i, body).then(r => console.log(r));      
-      i++;
+    if (broker) {
+      broker.publish("allstrips/commands", "OFF");
     }
   }
 
@@ -289,8 +294,16 @@ const domContainer = document.querySelector('#bookshelf_config_container');
 ReactDOM.render(e(
   LedStripArray, 
   { strips: [
-    { size: 150, patches: [{start: 0, size: 46}, {start: 48, size: 46}, {start: 96, size: 46}] }, 
-    { size: 150, patches: [{start: 0, size: 46}, {start: 48, size: 46}, {start: 96, size: 46}] },
+    //{ size: 150, patches: [{start: 0, size: 46}, {start: 48, size: 46}, {start: 96, size: 46}] }, 
+    //{ size: 150, patches: [{start: 0, size: 46}, {start: 48, size: 46}, {start: 96, size: 46}] },
+    { size: 46 }, 
+    { size: 46 }, 
+    { size: 46 },
+
+    { size: 46 }, 
+    { size: 46 }, 
+    { size: 46 }, 
+
     { size: 46 }, 
     { size: 46 }, 
     { size: 46 }] }), 
