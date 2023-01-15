@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <ArduinoMqttClient.h>
-#include <WiFiNINA.h>
+//#include <WiFiNINA.h>
+#include <ESP8266WiFi.h>
 //#include <ArduinoOTA.h>
 #include <Adafruit_NeoPixel.h>
 #include <stdio.h>
@@ -15,11 +16,16 @@
 // Define the led strips attached to the device
 Adafruit_NeoPixel strips[STRIP_COUNT] = 
 { 
-  Adafruit_NeoPixel(150, 2, NEO_GRB + NEO_KHZ800), // White
-  Adafruit_NeoPixel(150, 3, NEO_GRB + NEO_KHZ800), // Yellow 
-  Adafruit_NeoPixel(47, 4, NEO_GRB + NEO_KHZ800),  // Red
-  Adafruit_NeoPixel(47, 5, NEO_GRB + NEO_KHZ800),  // Blue
-  Adafruit_NeoPixel(47, 7, NEO_GRB + NEO_KHZ800)   // Green
+  // Adafruit_NeoPixel(150, 2, NEO_GRB + NEO_KHZ800), // White
+  // Adafruit_NeoPixel(150, 3, NEO_GRB + NEO_KHZ800), // Yellow 
+  // Adafruit_NeoPixel(47, 4, NEO_GRB + NEO_KHZ800),  // Red
+  // Adafruit_NeoPixel(47, 5, NEO_GRB + NEO_KHZ800),  // Blue
+  // Adafruit_NeoPixel(47, 7, NEO_GRB + NEO_KHZ800)   // Green
+  Adafruit_NeoPixel(150, 5, NEO_GRB + NEO_KHZ800), // D1, White
+  Adafruit_NeoPixel(150, 4, NEO_GRB + NEO_KHZ800), // D2, Yellow 
+  Adafruit_NeoPixel(47, 14, NEO_GRB + NEO_KHZ800), // D5, Red
+  Adafruit_NeoPixel(47, 12, NEO_GRB + NEO_KHZ800), // D6, Blue
+  Adafruit_NeoPixel(47, 13, NEO_GRB + NEO_KHZ800)  // D7, Green
 };
 
 class StripPiece {
@@ -48,7 +54,7 @@ class StripPiece {
       }
 
       client.read((unsigned char *)buf, 8);
-      buf[8] = NULL;
+      buf[8] = 0;
       uint32_t color = strtoul(buf, NULL, 16);
       _pixels[k] = color;
 
@@ -208,13 +214,19 @@ void connect_wifi() {
   // attempt to connect to Wifi network:
   Serial.print("Attempting to connect to SSID: ");
   Serial.println(ssid);
-  WiFi.noLowPowerMode();
+  //WiFi.noLowPowerMode();
   while (true) {
     show_status(0xFF, 0x000080);
     WiFi.disconnect();    
-    WiFi.end();
-    int status = WiFi.begin(ssid, pass);
-    if (status == WL_CONNECTED) break;
+    //WiFi.end();
+    
+    WiFi.begin(ssid, pass);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+
+    return;
 
     show_status(status, 0x800000);
     Serial.print(status);
@@ -254,8 +266,8 @@ void onMqttMessage(int messageSize) {
     if (messageSize < 10) {
       char *buffer = (char *)malloc(messageSize + 1);
       mqttClient.read((byte *)buffer, messageSize);
-      buffer[messageSize] = NULL;
-      String message = String(buffer, messageSize);
+      buffer[messageSize] = 0;
+      String message = String(buffer);
       free(buffer);
 
       handleAllStripsCommand(message);
@@ -519,7 +531,7 @@ void printWifiStatus() {
 //   char buf[9];
 //   for (int k = 0; k < strips[strip].numPixels(); k++) {
 //     client.read((unsigned char *)buf, 8);
-//     buf[8] = NULL;
+//     buf[8] = 0;
 //     long color = strtol(buf, NULL, 16);
 //     strips[strip].setPixelColor(k, color);
     
