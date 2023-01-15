@@ -2,7 +2,7 @@
 #include <ArduinoMqttClient.h>
 //#include <WiFiNINA.h>
 #include <ESP8266WiFi.h>
-//#include <ArduinoOTA.h>
+#include <ArduinoOTA.h>
 #include <Adafruit_NeoPixel.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,11 +16,14 @@
 // Define the led strips attached to the device
 Adafruit_NeoPixel strips[STRIP_COUNT] = 
 { 
+  // Arduino MKR 1010 Wifi
   // Adafruit_NeoPixel(150, 2, NEO_GRB + NEO_KHZ800), // White
   // Adafruit_NeoPixel(150, 3, NEO_GRB + NEO_KHZ800), // Yellow 
   // Adafruit_NeoPixel(47, 4, NEO_GRB + NEO_KHZ800),  // Red
   // Adafruit_NeoPixel(47, 5, NEO_GRB + NEO_KHZ800),  // Blue
   // Adafruit_NeoPixel(47, 7, NEO_GRB + NEO_KHZ800)   // Green
+  
+  // ESP8266
   Adafruit_NeoPixel(150, 5, NEO_GRB + NEO_KHZ800), // D1, White
   Adafruit_NeoPixel(150, 4, NEO_GRB + NEO_KHZ800), // D2, Yellow 
   Adafruit_NeoPixel(47, 14, NEO_GRB + NEO_KHZ800), // D5, Red
@@ -146,7 +149,8 @@ void setup() {
   connect_mqtt(); 
 
   // start the WiFi OTA library with internal (flash) based storage
-  //ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);  
+  ArduinoOTA.setHostname("esp8266-bookshelf");
+  ArduinoOTA.begin();  
 }
 
 void loop() {
@@ -158,7 +162,11 @@ void loop() {
     Serial.println();
 
     connect_wifi();
+    digitalWrite(LED_BUILTIN, LOW);
   }
+
+  // check for WiFi OTA updates
+  ArduinoOTA.handle();
 
   // Check connection to mqtt broker
   if (!mqttClient.connected()) {
@@ -166,10 +174,7 @@ void loop() {
     Serial.println("MQTT client disconnected");
 
     connect_mqtt();
-  }
-
-  // check for WiFi OTA updates
-  //ArduinoOTA.poll();
+  }  
 
   // call poll() regularly to allow the library to receive MQTT messages and
   // send MQTT keep alive which avoids being disconnected by the broker
